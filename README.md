@@ -1,4 +1,4 @@
-# READMATE — frontend prototype
+# READMATE
 
 A mobile-first reading accountability PWA prototype built with React, Vite, Framer Motion and Lucide icons.
 
