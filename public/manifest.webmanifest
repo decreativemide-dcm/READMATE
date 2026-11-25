@@ -1,0 +1,10 @@
+{
+  "name": "READMATE",
+  "short_name": "Readmate",
+  "description": "Read together. Grow together.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f4ff",
+  "theme_color": "#f7f4ff",
+  "icons": []
+}
