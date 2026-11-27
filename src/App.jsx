@@ -4525,33 +4525,46 @@ function ProfilePage({
         </button>
       </div>
 
-            <button
-        className="outline-button"
-        onClick={async () => {
-          if (!user?.id) {
-            notify('Please sign in first.');
-            return;
-          }
+            
+<button
+  className="outline-button"
+  onClick={async () => {
+    if (!user?.id) {
+      notify('Please sign in first.');
+      return;
+    }
 
-          const result = await enablePushNotifications(user.id);
+    const result = await enablePushNotifications(user.id);
 
-          if (result.success) {
-            notify('Push notifications enabled successfully!');
-          } else {
-            notify(result.error || 'Could not enable notifications.');
-          }
-        }}
-      >
-        <Bell /> Enable Notifications <ChevronRight />
-      </button>
+    if (result.success) {
+      notify('Push notifications enabled successfully!');
+    } else {
+      notify(result.error || 'Could not enable notifications.');
+    }
+  }}
+>
+  <Bell />
+  Enable Notifications
+  <ChevronRight />
+</button>
 
-        <button onClick={onConnect}>
-          <Heart /> Reading partnership <ChevronRight />
-        </button>
+<div className="settings-list">
+  <button onClick={onConnect}>
+    <Heart />
+    Reading partnership
+    <ChevronRight />
+  </button>
 
-                <button onClick={() => notify('Account settings will be available soon.')}>
-          <Settings /> Account settings <ChevronRight />
-        </button>
+  <button
+    onClick={() =>
+      notify('Account settings will be available soon.')
+    }
+  >
+    <Settings />
+    Account settings
+    <ChevronRight />
+  </button>
+</div>
 
       {/* AVATAR OPTIONS ARE ONLY VISIBLE INSIDE EDIT PROFILE */}
       {editing && (
