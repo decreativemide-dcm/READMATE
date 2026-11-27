@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
 
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       injectRegister: 'inline',
 
       // Use the existing public/manifest.webmanifest

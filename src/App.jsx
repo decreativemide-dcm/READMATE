@@ -9,6 +9,7 @@ import corporateFemaleAvatar from './avatar/corporate-female.png';
 import casualMaleAvatar from './avatar/casual-male.png';
 import casualFemaleAvatar from './avatar/casual-female.png';
 import InstallPrompt from './InstallPrompt';
+import UpdatePrompt from './UpdatePrompt';
 
 import {
   RotateCcw,
@@ -4699,6 +4700,7 @@ function ProfilePage({
             )}
 
       <InstallPrompt />
+<UpdatePrompt />
     </div>
   );
 }
