@@ -1,10 +1,20 @@
 {
+  "id": "/",
   "name": "READMATE",
   "short_name": "Readmate",
-  "description": "Read together. Grow together.",
+  "description": "Read together. Grow together. Your shared reading space.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#f7f4ff",
   "theme_color": "#f7f4ff",
-  "icons": []
+  "icons": [
+    {
+      "src": "/readmate-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
 }

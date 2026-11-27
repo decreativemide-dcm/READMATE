@@ -110,22 +110,50 @@ function App() {
   const [materialForm, setMaterialForm] = useState(emptyMaterialForm);
 
   // Reading buddy state
-  const [myProfile, setMyProfile] = useState(null);
-  const [buddySearch, setBuddySearch] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [searchLoading, setSearchLoading] = useState(false);
-  const [buddyRequests, setBuddyRequests] = useState([]);
-  const [incomingRequests, setIncomingRequests] = useState([]);
-  const [outgoingRequests, setOutgoingRequests] = useState([]);
-  const [connectedBuddy, setConnectedBuddy] = useState(null);
-  const [buddyLoading, setBuddyLoading] = useState(false);
-  const [buddyActionLoading, setBuddyActionLoading] = useState('');
-  const avatarImages = {
+ // Reading buddy state
+const [myProfile, setMyProfile] = useState(null);
+const [buddySearch, setBuddySearch] = useState('');
+const [searchResults, setSearchResults] = useState([]);
+const [searchLoading, setSearchLoading] = useState(false);
+const [buddyRequests, setBuddyRequests] = useState([]);
+const [incomingRequests, setIncomingRequests] = useState([]);
+const [outgoingRequests, setOutgoingRequests] = useState([]);
+
+const [connectedBuddy, setConnectedBuddy] = useState(null);
+const [connectedBuddies, setConnectedBuddies] = useState([]);
+
+const [buddyLoading, setBuddyLoading] = useState(false);
+const [buddyActionLoading, setBuddyActionLoading] = useState('');
+
+const avatarImages = {
   'corporate-male': corporateMaleAvatar,
   'corporate-female': corporateFemaleAvatar,
   'casual-male': casualMaleAvatar,
   'casual-female': casualFemaleAvatar
 };
+
+function ProfileAvatar({
+  avatarId,
+  fallback = 'R',
+  className = 'partner-avatar',
+  alt = 'User avatar'
+}) {
+  const image = avatarImages[avatarId];
+
+  return (
+    <div className={className}>
+      {image ? (
+        <img
+          src={image}
+          alt={alt}
+          className="profile-avatar-image"
+        />
+      ) : (
+        fallback
+      )}
+    </div>
+  );
+}
 
 function ProfileAvatar({ avatarId, fallback = 'R', className = 'partner-avatar', alt = 'User avatar' }) {
   const image = avatarImages[avatarId];
@@ -184,12 +212,16 @@ function ProfileAvatar({ avatarId, fallback = 'R', className = 'partner-avatar',
   const [showAdd, setShowAdd] = useState(false);
   const [editingNote, setEditingNote] = useState(null);
 
-  // Private messaging state
-  const [messages, setMessages] = useState([]);
-  const [messagesLoading, setMessagesLoading] = useState(false);
-  const [messageSending, setMessageSending] = useState(false);
-  const [messageText, setMessageText] = useState('');
-  const [unreadCount, setUnreadCount] = useState(0);
+  // Individual and group messaging state
+const [messages, setMessages] = useState([]);
+const [messagesLoading, setMessagesLoading] = useState(false);
+const [messageSending, setMessageSending] = useState(false);
+const [messageText, setMessageText] = useState('');
+const [unreadCount, setUnreadCount] = useState(0);
+
+const [conversations, setConversations] = useState([]);
+const [selectedConversation, setSelectedConversation] = useState(null);
+const [conversationsLoading, setConversationsLoading] = useState(false);
 
   // Notifications state
   const [notifications, setNotifications] = useState([]);
@@ -512,10 +544,11 @@ function ProfileAvatar({ avatarId, fallback = 'R', className = 'partner-avatar',
         }));
 
         if (mounted) {
-          setBuddyRequests(allRequests);
-          setIncomingRequests(enrichedIncoming);
-          setOutgoingRequests(enrichedOutgoing);
-          setConnectedBuddy(enrichedAccepted[0] || null);
+         setConnectedBuddies(enrichedAccepted);
+setConnectedBuddy(enrichedAccepted[0] || null);
+
+setIncomingRequests(enrichedIncoming);
+setOutgoingRequests(enrichedOutgoing);
         }
       } catch (error) {
         console.error('Error loading reading buddy data:', error);
@@ -622,7 +655,7 @@ function ProfileAvatar({ avatarId, fallback = 'R', className = 'partner-avatar',
 
     setBuddyRequests(allRequests);
 
-    setIncomingRequests(incoming.map(r => ({
+        setIncomingRequests(incoming.map(r => ({
       ...r,
       profile: byId[r.requester_id]
     })));
@@ -632,14 +665,8 @@ function ProfileAvatar({ avatarId, fallback = 'R', className = 'partner-avatar',
       profile: byId[r.recipient_id]
     })));
 
-    setConnectedBuddy(accepted.length ? {
-      ...accepted[0],
-      profile: byId[
-        accepted[0].requester_id === user.id
-          ? accepted[0].recipient_id
-          : accepted[0].requester_id
-      ]
-    } : null);
+    setConnectedBuddies(accepted);
+    setConnectedBuddy(accepted[0] || null);
   };
 
   // Send a buddy request
