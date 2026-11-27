@@ -134,6 +134,12 @@ const avatarImages = {
   'casual-male': casualMaleAvatar,
   'casual-female': casualFemaleAvatar
 };
+const [showAccountSettings, setShowAccountSettings] = useState(false);
+const [newPassword, setNewPassword] = useState('');
+const [confirmPassword, setConfirmPassword] = useState('');
+const [passwordSaving, setPasswordSaving] = useState(false);
+const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+const [notificationLoading, setNotificationLoading] = useState(false);
 
 function ProfileAvatar({
   avatarId,
@@ -2105,6 +2111,7 @@ setOutgoingRequests(enrichedOutgoing);
 
               {active === 'me' && (
                 <ProfilePage
+
                   notify={notify}
                   courses={courses}
                   notes={notes}
@@ -2112,6 +2119,7 @@ setOutgoingRequests(enrichedOutgoing);
                   myProfile={myProfile}
                   buddy={connectedBuddy?.profile || null}
                   onConnect={() => setActive('connect')}
+                  onLogout={handleLogout}
                   onProfileUpdated={setMyProfile}
                 />
               )}
@@ -4258,6 +4266,7 @@ function ProfilePage({
   myProfile,
   buddy,
   onConnect,
+  onLogout,
   onProfileUpdated
 }) {
   const [editing, setEditing] = useState(false);
@@ -4270,6 +4279,19 @@ function ProfilePage({
   const [selectedAvatarId, setSelectedAvatarId] = useState(
     myProfile?.avatar_id || ''
   );
+  const [showAccountSettings, setShowAccountSettings] = useState(false);
+
+const [accountName, setAccountName] = useState('');
+const [accountUsername, setAccountUsername] = useState('');
+const [accountBio, setAccountBio] = useState('');
+
+const [settingsSaving, setSettingsSaving] = useState(false);
+const [newPassword, setNewPassword] = useState('');
+const [confirmPassword, setConfirmPassword] = useState('');
+const [passwordSaving, setPasswordSaving] = useState(false);
+
+const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+const [notificationLoading, setNotificationLoading] = useState(false);
 
   const avatarOptions = [
     {
@@ -4299,23 +4321,27 @@ function ProfilePage({
   ];
 
   useEffect(() => {
-    setNameInput(
-      myProfile?.display_name ||
-      user?.user_metadata?.display_name ||
-      user?.email?.split('@')[0] ||
-      ''
-    );
+  setNameInput(
+    myProfile?.display_name ||
+    user?.user_metadata?.display_name ||
+    user?.email?.split('@')[0] ||
+    ''
+  );
 
-    setBioInput(myProfile?.bio || '');
+  setBioInput(myProfile?.bio || '');
 
-    setInterestsInput(
-      Array.isArray(myProfile?.reading_interests)
-        ? myProfile.reading_interests.join(', ')
-        : ''
-    );
+  setInterestsInput(
+    Array.isArray(myProfile?.reading_interests)
+      ? myProfile.reading_interests.join(', ')
+      : ''
+  );
 
-    setSelectedAvatarId(myProfile?.avatar_id || '');
-  }, [myProfile, user]);
+  setSelectedAvatarId(myProfile?.avatar_id || '');
+
+  setAccountName(myProfile?.display_name || '');
+  setAccountUsername(myProfile?.username || '');
+  setAccountBio(myProfile?.bio || '');
+}, [myProfile, user]);
 
   const completedCourses = courses.filter(
     course => Number(course.progress) === 100
@@ -4388,8 +4414,180 @@ function ProfilePage({
       setSaving(false);
     }
   };
+  const saveAccountSettings = async (e) => {
+  e.preventDefault();
 
+  if (!accountName.trim()) {
+    notify('Please enter your display name.');
+    return;
+  }
+
+  setSettingsSaving(true);
+
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({
+        display_name: accountName.trim(),
+        username: accountUsername.trim() || null,
+        bio: accountBio.trim()
+      })
+      .eq('id', user.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    onProfileUpdated?.(data);
+    notify('Account information updated successfully.');
+  } catch (error) {
+    console.error(error);
+    notify(error.message || 'Unable to update account information.');
+  } finally {
+    setSettingsSaving(false);
+  }
+};
+
+const changeAccountPassword = async (e) => {
+  e.preventDefault();
+
+  if (newPassword.length < 6) {
+    notify('Password must be at least 6 characters.');
+    return;
+  }
+
+  if (newPassword !== confirmPassword) {
+    notify('Passwords do not match.');
+    return;
+  }
+
+  setPasswordSaving(true);
+
+  try {
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword
+    });
+
+    if (error) throw error;
+
+    setNewPassword('');
+    setConfirmPassword('');
+    notify('Password updated successfully.');
+  } catch (error) {
+    notify(error.message || 'Unable to update password.');
+  } finally {
+    setPasswordSaving(false);
+  }
+};
+
+    if (showAccountSettings) { 
   return (
+    <div className="profile-layout">
+      <div className="profile-card" style={{ padding: 22 }}>
+        <button
+          type="button"
+          className="outline-button"
+          onClick={() => setShowAccountSettings(false)}
+        >
+          ← Back to profile
+        </button>
+
+        <h2>Account Settings</h2>
+
+        <h3>Personal information</h3>
+
+        <form onSubmit={saveAccountSettings}>
+          <label>
+            Display name
+            <input
+              value={accountName}
+              onChange={e => setAccountName(e.target.value)}
+              required
+            />
+          </label>
+
+          <label>
+            Username
+            <input
+              value={accountUsername}
+              onChange={e => setAccountUsername(e.target.value)}
+              placeholder="Your username"
+            />
+          </label>
+
+          <label>
+            About me
+            <textarea
+              value={accountBio}
+              onChange={e => setAccountBio(e.target.value)}
+              rows={3}
+            />
+          </label>
+
+          <button
+            type="submit"
+            className="primary-button"
+            disabled={settingsSaving}
+          >
+            {settingsSaving ? 'Saving...' : 'Save changes'}
+          </button>
+        </form>
+
+        <hr />
+
+        <h3>Email address</h3>
+        <p>{user?.email || 'No email available'}</p>
+
+        <hr />
+
+        <h3>Change password</h3>
+
+        <form onSubmit={changeAccountPassword}>
+          <label>
+            New password
+            <input
+              type="password"
+              value={newPassword}
+              onChange={e => setNewPassword(e.target.value)}
+              minLength={6}
+              required
+            />
+          </label>
+
+          <label>
+            Confirm new password
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)}
+              minLength={6}
+              required
+            />
+          </label>
+
+          <button
+            type="submit"
+            className="primary-button"
+            disabled={passwordSaving}
+          >
+            {passwordSaving ? 'Updating...' : 'Update password'}
+          </button>
+        </form>
+
+        <hr />
+
+        <button
+          type="button"
+          className="outline-button"
+          onClick={onLogout}
+        >
+          <LogOut size={16} /> Sign out
+        </button>
+      </div>
+    </div>
+  );
+}
+    return (
     <div className="profile-layout">
       <div className="profile-card">
         <div className="profile-cover" />
@@ -4548,23 +4746,13 @@ function ProfilePage({
   <ChevronRight />
 </button>
 
-<div className="settings-list">
-  <button onClick={onConnect}>
-    <Heart />
-    Reading partnership
-    <ChevronRight />
-  </button>
+<button onClick={() => setShowAccountSettings(true)}>
+  <Settings />
+  Account settings
+  <ChevronRight />
+</button>
 
-  <button
-    onClick={() =>
-      notify('Account settings will be available soon.')
-    }
-  >
-    <Settings />
-    Account settings
-    <ChevronRight />
-  </button>
-</div>
+  
 
       {/* AVATAR OPTIONS ARE ONLY VISIBLE INSIDE EDIT PROFILE */}
       {editing && (
