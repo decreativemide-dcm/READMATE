@@ -1,6 +1,6 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import { VitePWA } from 'vite-plugin-pwa'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
   plugins: [
@@ -8,9 +8,7 @@ export default defineConfig({
 
     VitePWA({
       registerType: 'prompt',
-      injectRegister: 'inline',
-
-      // Use the existing public/manifest.webmanifest
+      injectRegister: false,
       manifest: false,
 
       workbox: {
@@ -21,4 +19,4 @@ export default defineConfig({
       }
     })
   ]
-})
+});

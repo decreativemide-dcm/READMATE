@@ -1,28 +1,77 @@
 
 import React, { useEffect, useState } from 'react';
-import { RefreshCw, X, Sparkles } from 'lucide-react';
+import {
+  RefreshCw,
+  X,
+  Sparkles
+} from 'lucide-react';
+
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
 export default function UpdatePrompt() {
   const [show, setShow] = useState(false);
   const [updating, setUpdating] = useState(false);
+  const [registration, setRegistration] = useState(null);
 
   const {
     needRefresh: [needRefresh],
     updateServiceWorker
   } = useRegisterSW({
     immediate: true,
-    onRegisteredSW(swUrl, registration) {
-      console.log('READMATE service worker registered:', swUrl);
+
+    onRegisteredSW(swUrl, swRegistration) {
+      console.log(
+        'READMATE service worker registered:',
+        swUrl
+      );
+
+      if (swRegistration) {
+        setRegistration(swRegistration);
+      }
     },
+
     onRegisterError(error) {
-      console.error('Service worker registration failed:', error);
+      console.error(
+        'READMATE service worker registration failed:',
+        error
+      );
     }
   });
 
+  // Check periodically for new app versions
+  useEffect(() => {
+    if (!registration) return;
+
+    const checkForUpdates = async () => {
+      try {
+        await registration.update();
+
+        console.log('READMATE: Checked for app updates.');
+      } catch (error) {
+        console.error(
+          'READMATE update check failed:',
+          error
+        );
+      }
+    };
+
+    // Check once after registration
+    checkForUpdates();
+
+    // Check every 30 seconds
+    const interval = setInterval(
+      checkForUpdates,
+      30 * 1000
+    );
+
+    return () => clearInterval(interval);
+  }, [registration]);
+
+  // Show notification when an update is available
   useEffect(() => {
     if (needRefresh) {
       setShow(true);
+      console.log('READMATE: A new version is available.');
     }
   }, [needRefresh]);
 
@@ -46,6 +95,7 @@ export default function UpdatePrompt() {
           style={styles.close}
           onClick={() => setShow(false)}
           aria-label="Close update notification"
+          disabled={updating}
         >
           <X size={19} />
         </button>
@@ -54,7 +104,9 @@ export default function UpdatePrompt() {
           <Sparkles size={27} />
         </div>
 
-        <span style={styles.label}>READMATE UPDATE</span>
+        <span style={styles.label}>
+          READMATE UPDATE
+        </span>
 
         <h3 style={styles.title}>
           A fresh reading experience awaits!
@@ -73,9 +125,12 @@ export default function UpdatePrompt() {
           <RefreshCw
             size={17}
             style={{
-              animation: updating ? 'readmate-spin 1s linear infinite' : 'none'
+              animation: updating
+                ? 'readmate-spin 1s linear infinite'
+                : 'none'
             }}
           />
+
           {updating ? 'Updating...' : 'Update now'}
         </button>
 
@@ -91,7 +146,9 @@ export default function UpdatePrompt() {
       <style>
         {`
           @keyframes readmate-spin {
-            to { transform: rotate(360deg); }
+            to {
+              transform: rotate(360deg);
+            }
           }
         `}
       </style>
@@ -111,6 +168,7 @@ const styles = {
     justifyContent: 'center',
     padding: 20
   },
+
   card: {
     position: 'relative',
     width: '100%',
@@ -122,6 +180,7 @@ const styles = {
     color: '#211b35',
     boxShadow: '0 20px 70px rgba(0,0,0,.2)'
   },
+
   close: {
     position: 'absolute',
     top: 15,
@@ -136,6 +195,7 @@ const styles = {
     cursor: 'pointer',
     color: '#65567e'
   },
+
   icon: {
     width: 60,
     height: 60,
@@ -146,23 +206,27 @@ const styles = {
     display: 'grid',
     placeItems: 'center'
   },
+
   label: {
     fontSize: 10,
     fontWeight: 800,
     letterSpacing: 2,
     color: '#7354c8'
   },
+
   title: {
     fontSize: 22,
     lineHeight: 1.3,
     margin: '12px 0'
   },
+
   description: {
     color: '#777184',
     fontSize: 14,
     lineHeight: 1.7,
     marginBottom: 22
   },
+
   updateButton: {
     width: '100%',
     minHeight: 48,
@@ -178,6 +242,7 @@ const styles = {
     gap: 9,
     cursor: 'pointer'
   },
+
   later: {
     marginTop: 13,
     padding: 8,
