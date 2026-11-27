@@ -3,7 +3,6 @@ import React, { useEffect, useState } from 'react';
 import {
   RefreshCw,
   X,
-  Sparkles
 } from 'lucide-react';
 
 import { useRegisterSW } from 'virtual:pwa-register/react';
@@ -100,9 +99,11 @@ export default function UpdatePrompt() {
           <X size={19} />
         </button>
 
-        <div style={styles.icon}>
-          <Sparkles size={27} />
-        </div>
+       <img
+  src="/readmate-icon.svg"
+  alt="READMATE"
+  style={styles.appIcon}
+/>
 
         <span style={styles.label}>
           READMATE UPDATE
@@ -196,15 +197,13 @@ const styles = {
     color: '#65567e'
   },
 
-  icon: {
-    width: 60,
-    height: 60,
-    margin: '0 auto 15px',
-    borderRadius: 18,
-    background: '#eee8ff',
-    color: '#7354c8',
-    display: 'grid',
-    placeItems: 'center'
+ appIcon: {
+  width: 60,
+  height: 60,
+  margin: '0 auto 15px',
+  borderRadius: 18,
+  display: 'block',
+  objectFit: 'contain'
   },
 
   label: {
