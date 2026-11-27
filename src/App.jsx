@@ -10,6 +10,7 @@ import casualMaleAvatar from './avatar/casual-male.png';
 import casualFemaleAvatar from './avatar/casual-female.png';
 import InstallPrompt from './InstallPrompt';
 import UpdatePrompt from './UpdatePrompt';
+import { enablePushNotifications } from './pushNotifications';
 
 import {
   RotateCcw,
@@ -4524,19 +4525,33 @@ function ProfilePage({
         </button>
       </div>
 
-      <div className="settings-list">
-        <button onClick={() => notify('Notification preferences will be available soon.')}>
-          <Bell /> Notifications <ChevronRight />
-        </button>
+            <button
+        className="outline-button"
+        onClick={async () => {
+          if (!user?.id) {
+            notify('Please sign in first.');
+            return;
+          }
+
+          const result = await enablePushNotifications(user.id);
+
+          if (result.success) {
+            notify('Push notifications enabled successfully!');
+          } else {
+            notify(result.error || 'Could not enable notifications.');
+          }
+        }}
+      >
+        <Bell /> Enable Notifications <ChevronRight />
+      </button>
 
         <button onClick={onConnect}>
           <Heart /> Reading partnership <ChevronRight />
         </button>
 
-        <button onClick={() => notify('Account settings will be available soon.')}>
+                <button onClick={() => notify('Account settings will be available soon.')}>
           <Settings /> Account settings <ChevronRight />
         </button>
-      </div>
 
       {/* AVATAR OPTIONS ARE ONLY VISIBLE INSIDE EDIT PROFILE */}
       {editing && (
