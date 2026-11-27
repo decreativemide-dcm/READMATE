@@ -8,6 +8,7 @@ import corporateMaleAvatar from './avatar/corporate-male.png';
 import corporateFemaleAvatar from './avatar/corporate-female.png';
 import casualMaleAvatar from './avatar/casual-male.png';
 import casualFemaleAvatar from './avatar/casual-female.png';
+import InstallPrompt from './InstallPrompt';
 
 import {
   RotateCcw,
@@ -4695,7 +4696,9 @@ function ProfilePage({
             </div>
           </form>
         </Modal>
-      )}
+            )}
+
+      <InstallPrompt />
     </div>
   );
 }
