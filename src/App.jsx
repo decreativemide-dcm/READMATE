@@ -4280,6 +4280,7 @@ function ProfilePage({
     myProfile?.avatar_id || ''
   );
   const [showAccountSettings, setShowAccountSettings] = useState(false);
+const [showAvatarPicker, setShowAvatarPicker] = useState(false);
 
 const [accountName, setAccountName] = useState('');
 const [accountUsername, setAccountUsername] = useState('');
@@ -4414,7 +4415,7 @@ const [notificationLoading, setNotificationLoading] = useState(false);
       setSaving(false);
     }
   };
-  const saveAccountSettings = async (e) => {
+ const saveAccountSettings = async (e) => {
   e.preventDefault();
 
   if (!accountName.trim()) {
@@ -4430,7 +4431,12 @@ const [notificationLoading, setNotificationLoading] = useState(false);
       .update({
         display_name: accountName.trim(),
         username: accountUsername.trim() || null,
-        bio: accountBio.trim()
+        bio: accountBio.trim(),
+        reading_interests: interestsInput
+          .split(',')
+          .map(item => item.trim())
+          .filter(Boolean),
+        avatar_id: selectedAvatarId || null
       })
       .eq('id', user.id)
       .select()
@@ -4439,10 +4445,14 @@ const [notificationLoading, setNotificationLoading] = useState(false);
     if (error) throw error;
 
     onProfileUpdated?.(data);
-    notify('Account information updated successfully.');
+
+    setNameInput(accountName.trim());
+    setBioInput(accountBio.trim());
+
+    notify('Account settings updated successfully.');
   } catch (error) {
     console.error(error);
-    notify(error.message || 'Unable to update account information.');
+    notify(error.message || 'Unable to update account settings.');
   } finally {
     setSettingsSaving(false);
   }
@@ -4480,113 +4490,217 @@ const changeAccountPassword = async (e) => {
   }
 };
 
-    if (showAccountSettings) { 
+   
+if (showAccountSettings) {
   return (
-    <div className="profile-layout">
-      <div className="profile-card" style={{ padding: 22 }}>
+    <div className="account-settings-page">
+      <div className="settings-heading">
         <button
           type="button"
-          className="outline-button"
+          className="settings-back"
           onClick={() => setShowAccountSettings(false)}
         >
           ← Back to profile
         </button>
 
-        <h2>Account Settings</h2>
+        <span className="settings-eyebrow">YOUR PERSONAL SPACE</span>
+        <h2>Account Settings<span>.</span></h2>
+        <p>Manage your personal information and keep your account up to date.</p>
+      </div>
 
-        <h3>Personal information</h3>
+      <div className="settings-content">
 
-        <form onSubmit={saveAccountSettings}>
-          <label>
-            Display name
-            <input
-              value={accountName}
-              onChange={e => setAccountName(e.target.value)}
-              required
-            />
-          </label>
+        <section className="settings-section">
+          <div className="settings-section-heading">
+            <div className="settings-section-icon">✦</div>
+            <div>
+              <h3>Personal information</h3>
+              <p>Update how other readers see you on READMATE.</p>
+            </div>
+          </div>
 
-          <label>
-            Username
-            <input
-              value={accountUsername}
-              onChange={e => setAccountUsername(e.target.value)}
-              placeholder="Your username"
-            />
-          </label>
+          <form className="settings-form" onSubmit={saveAccountSettings}>
+            <div className="settings-avatar-section">
+  <button
+    type="button"
+    className="change-avatar-button"
+    onClick={() => setShowAvatarPicker(!showAvatarPicker)}
+  >
+    <Settings size={15} />
+    {showAvatarPicker ? 'Close avatar selection' : 'Change avatar'}
+    <ChevronRight
+      size={15}
+      className={showAvatarPicker ? 'avatar-chevron-open' : ''}
+    />
+  </button>
 
-          <label>
-            About me
-            <textarea
-              value={accountBio}
-              onChange={e => setAccountBio(e.target.value)}
-              rows={3}
-            />
-          </label>
-
-          <button
-            type="submit"
-            className="primary-button"
-            disabled={settingsSaving}
-          >
-            {settingsSaving ? 'Saving...' : 'Save changes'}
-          </button>
-        </form>
-
-        <hr />
-
-        <h3>Email address</h3>
-        <p>{user?.email || 'No email available'}</p>
-
-        <hr />
-
-        <h3>Change password</h3>
-
-        <form onSubmit={changeAccountPassword}>
-          <label>
-            New password
-            <input
-              type="password"
-              value={newPassword}
-              onChange={e => setNewPassword(e.target.value)}
-              minLength={6}
-              required
-            />
-          </label>
-
-          <label>
-            Confirm new password
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={e => setConfirmPassword(e.target.value)}
-              minLength={6}
-              required
-            />
-          </label>
-
-          <button
-            type="submit"
-            className="primary-button"
-            disabled={passwordSaving}
-          >
-            {passwordSaving ? 'Updating...' : 'Update password'}
-          </button>
-        </form>
-
-        <hr />
-
+  {showAvatarPicker && (
+    <div className="settings-avatar-grid">
+      {avatarOptions.map(avatar => (
         <button
+          key={avatar.id}
           type="button"
-          className="outline-button"
-          onClick={onLogout}
+          className={`settings-avatar-option ${
+            selectedAvatarId === avatar.id ? 'selected' : ''
+          }`}
+          disabled={settingsSaving}
+          onClick={() => setSelectedAvatarId(avatar.id)}
         >
-          <LogOut size={16} /> Sign out
+          <img src={avatar.image} alt={avatar.name} />
+          <strong>{avatar.name}</strong>
+          <small>{avatar.category}</small>
+
+          {selectedAvatarId === avatar.id && (
+            <span className="settings-avatar-selected">✓ Selected</span>
+          )}
         </button>
+      ))}
+    </div>
+  )}
+</div>
+            <label className="settings-field">
+              <span>Display name</span>
+              <input
+                value={accountName}
+                onChange={e => setAccountName(e.target.value)}
+                placeholder="Enter your name"
+                required
+              />
+            </label>
+
+            <label className="settings-field">
+              <span>Username</span>
+              <div className="username-input">
+                <span>@</span>
+                <input
+                  value={accountUsername}
+                  onChange={e => setAccountUsername(e.target.value)}
+                  placeholder="yourusername"
+                />
+              </div>
+            </label>
+
+            <label className="settings-field">
+              <span>About me</span>
+              <textarea
+                value={accountBio}
+                onChange={e => setAccountBio(e.target.value)}
+                placeholder="Tell other readers a little about yourself..."
+                rows={4}
+              />
+              <small>Let your reading buddies know more about you.</small>
+            </label>
+            <label className="settings-field">
+  <span>Reading interests</span>
+  <input
+    value={interestsInput}
+    onChange={e => setInterestsInput(e.target.value)}
+    placeholder="Technology, Business, Fiction..."
+    maxLength={300}
+  />
+  <small>Separate each interest with a comma.</small>
+</label>
+
+            <button
+              type="submit"
+              className="settings-save-button"
+              disabled={settingsSaving}
+            >
+              {settingsSaving ? 'Saving changes...' : 'Save changes →'}
+            </button>
+          </form>
+        </section>
+
+        <section className="settings-section">
+          <div className="settings-section-heading">
+            <div className="settings-section-icon peach">✉</div>
+            <div>
+              <h3>Email address</h3>
+              <p>Your registered account email.</p>
+            </div>
+          </div>
+
+          <div className="settings-email-card">
+            <div>
+              <span>Email address</span>
+              <strong>{user?.email || 'No email available'}</strong>
+            </div>
+            <span className="settings-verified">Account email</span>
+          </div>
+          <p className="settings-hint">
+            Your email is managed through your READMATE authentication account.
+          </p>
+        </section>
+
+        <section className="settings-section">
+          <div className="settings-section-heading">
+            <div className="settings-section-icon blue">⌑</div>
+            <div>
+              <h3>Security & password</h3>
+              <p>Keep your account protected with a strong password.</p>
+            </div>
+          </div>
+
+          <form className="settings-form" onSubmit={changeAccountPassword}>
+            <label className="settings-field">
+              <span>New password</span>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                placeholder="Enter new password"
+                minLength={6}
+                required
+              />
+            </label>
+
+            <label className="settings-field">
+              <span>Confirm new password</span>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
+                placeholder="Confirm your new password"
+                minLength={6}
+                required
+              />
+            </label>
+
+            <p className="settings-hint">
+              Use at least 6 characters for your new password.
+            </p>
+
+            <button
+              type="submit"
+              className="settings-save-button"
+              disabled={passwordSaving}
+            >
+              {passwordSaving ? 'Updating password...' : 'Update password →'}
+            </button>
+          </form>
+        </section>
+
+        <section className="settings-logout-section">
+          <div>
+            <h3>Leaving READMATE?</h3>
+            <p>You can sign out of your account on this device.</p>
+          </div>
+
+          <button
+            type="button"
+            className="settings-logout-button"
+            onClick={onLogout}
+          >
+            <LogOut size={16} />
+            Sign out
+          </button>
+        </section>
+
       </div>
     </div>
   );
 }
+
     return (
     <div className="profile-layout">
       <div className="profile-card">
@@ -4619,12 +4733,6 @@ const changeAccountPassword = async (e) => {
             </p>
           </div>
 
-          <button
-            className="outline-button"
-            onClick={() => setEditing(true)}
-          >
-            <Settings size={15} /> Edit profile
-          </button>
         </div>
 
         <div className="profile-bio">
@@ -4746,176 +4854,18 @@ const changeAccountPassword = async (e) => {
   <ChevronRight />
 </button>
 
-<button onClick={() => setShowAccountSettings(true)}>
-  <Settings />
-  Account settings
-  <ChevronRight />
+<button
+  className="account-settings-trigger"
+  onClick={() => setShowAccountSettings(true)}
+>
+  <Settings size={17} />
+  <span>Account settings</span>
+  <ChevronRight size={17} />
 </button>
 
   
 
-      {/* AVATAR OPTIONS ARE ONLY VISIBLE INSIDE EDIT PROFILE */}
-      {editing && (
-        <Modal
-          title="Edit your profile"
-          subtitle="Tell your reading community a little about yourself."
-          onClose={() => !saving && setEditing(false)}
-        >
-          <form
-            onSubmit={saveProfile}
-            style={{ display: 'grid', gap: 16 }}
-          >
-            <div style={{ display: 'grid', gap: 10 }}>
-              <span style={{ fontSize: 13, fontWeight: 600 }}>
-                Choose your avatar
-              </span>
-
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                gap: 12
-              }}>
-                {avatarOptions.map(avatar => (
-                  <button
-                    key={avatar.id}
-                    type="button"
-                    disabled={saving}
-                    onClick={() => setSelectedAvatarId(avatar.id)}
-                    style={{
-                      border: selectedAvatarId === avatar.id
-                        ? '2px solid #8065a7'
-                        : '1px solid #eee8f2',
-                      borderRadius: 14,
-                      padding: 8,
-                      background: selectedAvatarId === avatar.id
-                        ? '#f7f2fc'
-                        : '#fff',
-                      cursor: 'pointer',
-                      textAlign: 'center'
-                    }}
-                  >
-                    <img
-                      src={avatar.image}
-                      alt={avatar.name}
-                      style={{
-                        width: '100%',
-                        aspectRatio: '1 / 1',
-                        objectFit: 'cover',
-                        borderRadius: 10,
-                        display: 'block'
-                      }}
-                    />
-
-                    <div style={{
-                      fontSize: 11,
-                      fontWeight: 700,
-                      color: '#51415f',
-                      marginTop: 8
-                    }}>
-                      {avatar.name}
-                    </div>
-
-                    <div style={{
-                      fontSize: 10,
-                      color: '#9a8ca5',
-                      marginTop: 4
-                    }}>
-                      {avatar.category}
-                    </div>
-
-                    {selectedAvatarId === avatar.id && (
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 4,
-                        fontSize: 10,
-                        color: '#8065a7',
-                        marginTop: 6,
-                        fontWeight: 700
-                      }}>
-                        <CheckCircle2 size={12} />
-                        Selected
-                      </div>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <label style={{ display: 'grid', gap: 7 }}>
-              <span style={{ fontSize: 13, fontWeight: 600 }}>
-                Display name
-              </span>
-
-              <input
-                value={nameInput}
-                onChange={e => setNameInput(e.target.value)}
-                placeholder="Your name"
-                maxLength={60}
-                required
-              />
-            </label>
-
-            <label style={{ display: 'grid', gap: 7 }}>
-              <span style={{ fontSize: 13, fontWeight: 600 }}>
-                About me
-              </span>
-
-              <textarea
-                value={bioInput}
-                onChange={e => setBioInput(e.target.value)}
-                placeholder="Write a short introduction..."
-                rows={4}
-                maxLength={300}
-              />
-            </label>
-
-            <label style={{ display: 'grid', gap: 7 }}>
-              <span style={{ fontSize: 13, fontWeight: 600 }}>
-                Reading interests
-              </span>
-
-              <input
-                value={interestsInput}
-                onChange={e => setInterestsInput(e.target.value)}
-                placeholder="Technology, Business, Fiction..."
-                maxLength={300}
-              />
-
-              <small>Separate each interest with a comma.</small>
-            </label>
-
-            <div style={{
-              display: 'flex',
-              justifyContent: 'flex-end',
-              gap: 10
-            }}>
-              <button
-                type="button"
-                className="outline-button"
-                disabled={saving}
-                onClick={() => {
-                  setSelectedAvatarId(myProfile?.avatar_id || '');
-                  setEditing(false);
-                }}
-              >
-                Cancel
-              </button>
-
-              <button
-                type="submit"
-                className="primary-button"
-                disabled={saving || !nameInput.trim()}
-              >
-                {saving ? 'Saving...' : 'Save changes'}
-              </button>
-            </div>
-          </form>
-        </Modal>
-            )}
-
-      <InstallPrompt />
+                  <InstallPrompt />
 <UpdatePrompt />
     </div>
   );
