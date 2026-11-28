@@ -2569,6 +2569,19 @@ function HomePage({
   const [timerDuration, setTimerDuration] = useState(25);
   const [remainingSeconds, setRemainingSeconds] = useState(25 * 60);
   const [timerRunning, setTimerRunning] = useState(false);
+  const [timerStartedAt, setTimerStartedAt] = useState(null);
+  const [customTimerMinutes, setCustomTimerMinutes] = useState('');
+  const [customTimerHours, setCustomTimerHours] = useState('');
+
+  // Manual reading entry
+  const [manualMinutes, setManualMinutes] = useState('');
+  const [manualReflection, setManualReflection] = useState('');
+  const [savingManualSession, setSavingManualSession] = useState(false);
+
+  // Reading history
+  const [readingSessions, setReadingSessions] = useState([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+
 
   // Load or create today's reading goal
   useEffect(() => {
@@ -2739,73 +2752,203 @@ function HomePage({
     return () => clearInterval(interval);
   }, [timerRunning]);
 
-  // Automatically save completed reading sessions
-  useEffect(() => {
-    if (!timerRunning || remainingSeconds !== 0) return;
+  
+// Automatically save completed reading sessions
+useEffect(() => {
+  if (!timerRunning || remainingSeconds !== 0) return;
+playTimerSound();
 
-    setTimerRunning(false);
+  setTimerRunning(false);
 
-    const saveCompletedSession = async () => {
-      if (!readingGoal || goalSaving) return;
+  const saveCompletedSession = async () => {
+    if (!user?.id || !readingGoal || goalSaving) return;
 
-      setGoalSaving(true);
+    setGoalSaving(true);
 
-      const updatedMinutes =
-        Number(readingGoal.minutes_read) + timerDuration;
+    const sessionId = crypto.randomUUID();
 
-      const { data, error } = await supabase
-        .from('reading_goals')
-        .update({
-          minutes_read: updatedMinutes,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', readingGoal.id)
-        .select()
-        .single();
+    const startedAt = timerStartedAt ||
+      new Date(Date.now() - timerDuration * 60 * 1000).toISOString();
 
-      if (error) {
-        console.error('Error saving completed session:', error);
-        notify?.('Could not save your reading session.');
-      } else {
-        setReadingGoal(data);
-        notify?.(`${timerDuration} minutes of reading completed!`);
+    const { data, error } = await supabase.rpc(
+      'record_reading_session',
+      {
+        p_session_id: sessionId,
+        p_duration_minutes: timerDuration,
+        p_session_type: 'timed',
+        p_started_at: startedAt,
+        p_reading_item_id: null,
+        p_reflection: ''
       }
+    );
 
-      setGoalSaving(false);
-    };
-
-    saveCompletedSession();
-  }, [timerRunning, remainingSeconds]);
-
-  const startTimer = () => {
-    if (remainingSeconds === 0) {
-      setRemainingSeconds(timerDuration * 60);
+    if (error) {
+      console.error('Error saving completed session:', error);
+      notify?.('Could not save your reading session.');
+    } else {
+      setReadingGoal(data.reading_goal);
+      await loadReadingSessions();
+      setTimerStartedAt(null);
+      notify?.(`${timerDuration} minutes of reading completed!`);
     }
 
-    setTimerRunning(true);
+    setGoalSaving(false);
   };
 
-  const pauseTimer = () => {
-    setTimerRunning(false);
-  };
+  saveCompletedSession();
+}, [timerRunning, remainingSeconds]);
 
-  const resetTimer = () => {
-    setTimerRunning(false);
+ 
+const startTimer = () => {
+  if (remainingSeconds === 0) {
     setRemainingSeconds(timerDuration * 60);
-  };
+    setTimerStartedAt(new Date().toISOString());
+  } else if (!timerStartedAt) {
+    setTimerStartedAt(new Date().toISOString());
+  }
 
-  const changeTimerDuration = (minutes) => {
-    if (timerRunning) return;
+  setTimerRunning(true);
+};
 
-    setTimerDuration(minutes);
-    setRemainingSeconds(minutes * 60);
-  };
+const pauseTimer = () => {
+  setTimerRunning(false);
+};
 
-  const formattedTime = `${String(
+const playTimerSound = () => {
+  try {
+    const audioContext = new (
+      window.AudioContext || window.webkitAudioContext
+    )();
+
+    const playBeep = (frequency, startTime) => {
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+
+      oscillator.connect(gain);
+      gain.connect(audioContext.destination);
+
+      oscillator.type = 'square';
+      oscillator.frequency.value = frequency;
+
+      gain.gain.setValueAtTime(0.7, startTime);
+      gain.gain.exponentialRampToValueAtTime(
+        0.001,
+        startTime + 0.3
+      );
+
+      oscillator.start(startTime);
+      oscillator.stop(startTime + 0.3);
+    };
+
+    if (audioContext.state === 'suspended') {
+      audioContext.resume();
+    }
+
+    const now = audioContext.currentTime;
+
+    playBeep(880, now);
+    playBeep(880, now + 0.4);
+    playBeep(1100, now + 0.8);
+
+    setTimeout(() => audioContext.close(), 1500);
+
+  } catch (error) {
+    console.error('Timer sound error:', error);
+  }
+};
+
+  
+const resetTimer = () => {
+  setTimerRunning(false);
+  setTimerStartedAt(null);
+  setRemainingSeconds(timerDuration * 60);
+};
+
+
+ const changeTimerDuration = (minutes) => {
+  if (timerRunning) return;
+
+  setTimerDuration(minutes);
+  setRemainingSeconds(minutes * 60);
+  setTimerStartedAt(null);
+};
+
+   const formattedTime = `${String(
     Math.floor(remainingSeconds / 60)
   ).padStart(2, '0')}:${String(
     remainingSeconds % 60
   ).padStart(2, '0')}`;
+
+
+  // Load reading history
+  const loadReadingSessions = async () => {
+    if (!user?.id) return;
+
+    setSessionsLoading(true);
+
+    const { data, error } = await supabase
+      .from('reading_sessions')
+      .select('id, duration_minutes, session_type, started_at, reflection')
+      .eq('user_id', user.id)
+      .order('started_at', { ascending: false })
+      .limit(50);
+
+    if (error) {
+      console.error('Error loading reading history:', error);
+      notify?.('Could not load reading history.');
+    } else {
+      setReadingSessions(data || []);
+    }
+
+    setSessionsLoading(false);
+  };
+
+  // Refresh history when the user is available
+  useEffect(() => {
+    loadReadingSessions();
+  }, [user?.id]);
+
+  // Save manually recorded reading
+  const saveManualSession = async () => {
+    const minutes = Number(manualMinutes);
+
+    if (
+      !user?.id ||
+      savingManualSession ||
+      !Number.isInteger(minutes) ||
+      minutes < 1
+    ) {
+      notify?.('Enter a valid reading duration.');
+      return;
+    }
+
+    setSavingManualSession(true);
+
+    const { data, error } = await supabase.rpc(
+      'record_reading_session',
+      {
+        p_session_id: crypto.randomUUID(),
+        p_duration_minutes: minutes,
+        p_session_type: 'manual',
+        p_started_at: new Date().toISOString(),
+        p_reading_item_id: null,
+        p_reflection: manualReflection.trim()
+      }
+    );
+
+    if (error) {
+      console.error('Error saving manual reading:', error);
+      notify?.('Could not save your reading entry.');
+    } else {
+      setReadingGoal(data.reading_goal);
+      setManualMinutes('');
+      setManualReflection('');
+      await loadReadingSessions();
+      notify?.(`${minutes} minutes of reading recorded!`);
+    }
+
+    setSavingManualSession(false);
+  };
 
   // Update daily target
   const saveReadingTarget = async () => {
@@ -3162,7 +3305,80 @@ function HomePage({
                     </button>
                   ))}
                 </div>
+               {/* CUSTOM TIMER DURATION */}
+<div style={{
+  display: 'flex',
+  gap: '8px',
+  marginTop: '14px',
+  alignItems: 'center'
+}}>
+  <input
+    type="number"
+    min="0"
+    placeholder="Hours"
+    value={customTimerHours}
+    onChange={e => setCustomTimerHours(e.target.value)}
+    disabled={timerRunning || goalSaving}
+    style={{
+      width: '75px',
+      minWidth: 0,
+      padding: '10px',
+      borderRadius: '9px',
+      border: '1px solid rgba(165,139,220,0.3)',
+      background: 'transparent',
+      color: 'inherit'
+    }}
+  />
 
+  <input
+    type="number"
+    min="0"
+    max="59"
+    placeholder="Minutes"
+    value={customTimerMinutes}
+    onChange={e => setCustomTimerMinutes(e.target.value)}
+    disabled={timerRunning || goalSaving}
+    style={{
+      width: '85px',
+      minWidth: 0,
+      padding: '10px',
+      borderRadius: '9px',
+      border: '1px solid rgba(165,139,220,0.3)',
+      background: 'transparent',
+      color: 'inherit'
+    }}
+  />
+
+  <button
+    onClick={() => {
+      const hours = Number(customTimerHours || 0);
+      const minutes = Number(customTimerMinutes || 0);
+      const totalMinutes = hours * 60 + minutes;
+
+      if (
+        !Number.isInteger(hours) ||
+        !Number.isInteger(minutes) ||
+        hours < 0 ||
+        minutes < 0 ||
+        minutes > 59 ||
+        totalMinutes < 1 ||
+        totalMinutes > 1440
+      ) {
+        notify?.('Enter a valid duration between 1 minute and 24 hours.');
+        return;
+      }
+
+      changeTimerDuration(totalMinutes);
+      setCustomTimerHours('');
+      setCustomTimerMinutes('');
+    }}
+    disabled={timerRunning || goalSaving}
+    className="primary-button"
+    style={{ padding: '10px 14px' }}
+  >
+    Set
+  </button>
+</div>
                 <div
                   style={{
                     textAlign: 'center',
@@ -3292,6 +3508,149 @@ function HomePage({
                 </div>
               </div>
             </>
+          )}
+        </div>
+
+        {/* MANUAL READING ENTRY */}
+        <div className="partner-card">
+          <div className="section-heading compact">
+            <div>
+              <h3>Log reading time</h3>
+              <p>Record reading you did without the timer.</p>
+            </div>
+            <BookOpen size={19} />
+          </div>
+
+          <div style={{ marginTop: '16px' }}>
+            <label className="mini-label">
+              READING DURATION (MINUTES)
+            </label>
+
+            <input
+              type="number"
+              min="1"
+              step="1"
+              value={manualMinutes}
+              onChange={e => setManualMinutes(e.target.value)}
+              placeholder="e.g. 40"
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                padding: '12px',
+                marginTop: '8px',
+                borderRadius: '10px',
+                border: '1px solid rgba(165,139,220,0.3)',
+                background: 'transparent',
+                color: 'inherit'
+              }}
+            />
+
+            <label
+              className="mini-label"
+              style={{ display: 'block', marginTop: '16px' }}
+            >
+              REFLECTION (OPTIONAL)
+            </label>
+
+            <textarea
+              value={manualReflection}
+              onChange={e => setManualReflection(e.target.value)}
+              placeholder="What did you learn?"
+              rows={3}
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                padding: '12px',
+                marginTop: '8px',
+                borderRadius: '10px',
+                border: '1px solid rgba(165,139,220,0.3)',
+                background: 'transparent',
+                color: 'inherit',
+                resize: 'vertical'
+              }}
+            />
+
+            <button
+              className="primary-button full-button"
+              onClick={saveManualSession}
+              disabled={savingManualSession}
+              style={{ marginTop: '14px' }}
+            >
+              {savingManualSession ? 'Saving...' : 'Save reading time'}
+            </button>
+          </div>
+        </div>
+
+        {/* READING HISTORY */}
+        <div className="partner-card">
+          <div className="section-heading compact">
+            <div>
+              <h3>Reading history</h3>
+              <p>Your latest reading activities.</p>
+            </div>
+            <Clock3 size={19} />
+          </div>
+
+          {sessionsLoading ? (
+            <div className="empty-hint">
+              Loading reading history...
+            </div>
+          ) : readingSessions.length === 0 ? (
+            <div className="empty-hint">
+              Your reading activities will appear here.
+            </div>
+          ) : (
+            <div style={{ marginTop: '16px' }}>
+              {readingSessions.map(session => (
+                <div
+                  key={session.id}
+                  style={{
+                    padding: '14px 0',
+                    borderBottom: '1px solid rgba(165,139,220,0.15)'
+                  }}
+                >
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: '10px',
+                    alignItems: 'center'
+                  }}>
+                    <strong>
+                      {session.duration_minutes} minutes
+                    </strong>
+
+                    <span style={{
+                      fontSize: '11px',
+                      padding: '5px 9px',
+                      borderRadius: '20px',
+                      background: 'rgba(165,139,220,0.15)'
+                    }}>
+                      {session.session_type === 'manual'
+                        ? 'Manual'
+                        : 'Timed'}
+                    </span>
+                  </div>
+
+                  <small style={{
+                    display: 'block',
+                    opacity: 0.65,
+                    marginTop: '6px'
+                  }}>
+                    {new Date(session.started_at).toLocaleString()}
+                  </small>
+
+                  {session.reflection && (
+                    <p style={{
+                      fontSize: '13px',
+                      marginTop: '8px',
+                      lineHeight: 1.5
+                    }}>
+                      {session.reflection}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
           )}
         </div>
 
