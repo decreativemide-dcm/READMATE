@@ -511,3 +511,44 @@
 .change-avatar-button svg:last-child {
   transition: transform .2s;
 }
+
+/* ACCOUNT SETTINGS ACCORDION */
+
+.settings-accordion-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.settings-accordion-button .settings-section-heading {
+  margin: 0;
+}
+
+.settings-accordion-button > svg {
+  flex-shrink: 0;
+  color: #8065a7;
+  transition: transform 0.25s ease;
+}
+
+.settings-chevron-open {
+  transform: rotate(90deg);
+}
+
+.settings-section {
+  padding: 20px;
+}
+
+.settings-section > .settings-form {
+  margin-top: 22px;
+}
+
+.settings-section > .settings-email-card {
+  margin-top: 20px;
+}
