@@ -138,6 +138,10 @@ const [showAccountSettings, setShowAccountSettings] = useState(false);
 const [activeSettingsSection, setActiveSettingsSection] = useState('');
 const [newPassword, setNewPassword] = useState('');
 const [confirmPassword, setConfirmPassword] = useState('');
+const [currentPassword, setCurrentPassword] = useState('');
+const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+const [showNewPassword, setShowNewPassword] = useState(false);
+const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 const [passwordSaving, setPasswordSaving] = useState(false);
 const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 const [notificationLoading, setNotificationLoading] = useState(false);
@@ -2247,10 +2251,9 @@ setOutgoingRequests(enrichedOutgoing);
                     ? 'Update reflection'
                     : 'Save reflection'}
               </button>
-            </form>
+               </form>
           </Modal>
         )}
-
         {showAdd && (
           <Modal
             title="Add to your reading shelf"
@@ -2902,6 +2905,32 @@ const resetTimer = () => {
 
     setSessionsLoading(false);
   };
+  const clearReadingHistory = async () => {
+  if (!user?.id) return;
+
+  const confirmed = window.confirm(
+    'Clear your reading history? Your reading progress, goals and streaks will remain unchanged.'
+  );
+
+  if (!confirmed) return;
+
+  setSessionsLoading(true);
+
+  const { error } = await supabase
+    .from('reading_sessions')
+    .delete()
+    .eq('user_id', user.id);
+
+  if (error) {
+    console.error('Error clearing reading history:', error);
+    notify?.('Could not clear reading history.');
+  } else {
+    setReadingSessions([]);
+    notify?.('Reading history cleared. Your progress is safe.');
+  }
+
+  setSessionsLoading(false);
+};
 
   // Refresh history when the user is available
   useEffect(() => {
@@ -3584,12 +3613,32 @@ const resetTimer = () => {
         {/* READING HISTORY */}
         <div className="partner-card">
           <div className="section-heading compact">
-            <div>
-              <h3>Reading history</h3>
-              <p>Your latest reading activities.</p>
-            </div>
-            <Clock3 size={19} />
-          </div>
+  <div>
+    <h3>Reading history</h3>
+    <p>Your latest reading activities.</p>
+  </div>
+
+  <div style={{
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px'
+  }}>
+    {readingSessions.length > 0 && (
+      <button
+        type="button"
+        className="outline-button"
+        onClick={clearReadingHistory}
+        disabled={sessionsLoading}
+        style={{ fontSize: '11px', padding: '7px 10px' }}
+      >
+        Clear history
+      </button>
+    )}
+
+    <Clock3 size={19} />
+  </div>
+  </div>
+
 
           {sessionsLoading ? (
             <div className="empty-hint">
@@ -4650,6 +4699,10 @@ const [accountBio, setAccountBio] = useState('');
 const [settingsSaving, setSettingsSaving] = useState(false);
 const [newPassword, setNewPassword] = useState('');
 const [confirmPassword, setConfirmPassword] = useState('');
+const [currentPassword, setCurrentPassword] = useState('');
+const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+const [showNewPassword, setShowNewPassword] = useState(false);
+const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 const [passwordSaving, setPasswordSaving] = useState(false);
 
 const [notificationsEnabled, setNotificationsEnabled] = useState(false);
@@ -4822,27 +4875,57 @@ const [notificationLoading, setNotificationLoading] = useState(false);
 const changeAccountPassword = async (e) => {
   e.preventDefault();
 
+  if (!currentPassword) {
+    notify('Enter your current password.');
+    return;
+  }
+
   if (newPassword.length < 6) {
-    notify('Password must be at least 6 characters.');
+    notify('New password must be at least 6 characters.');
     return;
   }
 
   if (newPassword !== confirmPassword) {
-    notify('Passwords do not match.');
+    notify('New passwords do not match.');
+    return;
+  }
+
+  if (currentPassword === newPassword) {
+    notify('Your new password must be different.');
+    return;
+  }
+
+  if (!user?.email) {
+    notify('Unable to verify your account email.');
     return;
   }
 
   setPasswordSaving(true);
 
   try {
+    const { error: verifyError } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: currentPassword
+    });
+
+    if (verifyError) {
+      throw new Error('Your current password is incorrect.');
+    }
+
     const { error } = await supabase.auth.updateUser({
       password: newPassword
     });
 
     if (error) throw error;
 
+    setCurrentPassword('');
     setNewPassword('');
     setConfirmPassword('');
+
+    setShowCurrentPassword(false);
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
+
     notify('Password updated successfully.');
   } catch (error) {
     notify(error.message || 'Unable to update password.');
@@ -4851,13 +4934,13 @@ const changeAccountPassword = async (e) => {
   }
 };
 
-   
+       {/* SECURITY & PASSWORD */}
+
+const toggleSettingsSection = (section) => {
+  setActiveSettingsSection(prev => prev === section ? '' : section);
+};
 
 if (showAccountSettings) {
-  const toggleSettingsSection = (section) => {
-    setActiveSettingsSection(prev => prev === section ? '' : section);
-  };
-
   return (
     <div className="account-settings-page">
       <div className="settings-heading">
@@ -4868,15 +4951,13 @@ if (showAccountSettings) {
         >
           ← Back to profile
         </button>
-
         <span className="settings-eyebrow">YOUR PERSONAL SPACE</span>
         <h2>Account Settings<span>.</span></h2>
-        <p>Manage your personal information and keep your account up to date.</p>
+        <p>Manage your personal information and account security.</p>
       </div>
 
       <div className="settings-content">
 
-        {/* PERSONAL INFORMATION */}
         <section className="settings-section">
           <button
             type="button"
@@ -4888,78 +4969,56 @@ if (showAccountSettings) {
               <div className="settings-section-icon">✦</div>
               <div>
                 <h3>Personal information</h3>
-                <p>Update how other readers see you on READMATE.</p>
+                <p>Update your reader profile.</p>
               </div>
             </div>
-            <ChevronRight
-              className={activeSettingsSection === 'personal' ? 'settings-chevron-open' : ''}
-              size={19}
-            />
+            <ChevronRight size={19} />
           </button>
 
           {activeSettingsSection === 'personal' && (
             <form className="settings-form" onSubmit={saveAccountSettings}>
-              <div className="settings-avatar-section">
-                <button
-                  type="button"
-                  className="change-avatar-button"
-                  onClick={() => setShowAvatarPicker(!showAvatarPicker)}
-                >
-                  <Settings size={15} />
-                  {showAvatarPicker ? 'Close avatar selection' : 'Change avatar'}
-                  <ChevronRight
-                    size={15}
-                    className={showAvatarPicker ? 'avatar-chevron-open' : ''}
-                  />
-                </button>
+              <button
+                type="button"
+                className="change-avatar-button"
+                onClick={() => setShowAvatarPicker(!showAvatarPicker)}
+              >
+                Change avatar
+              </button>
 
-                {showAvatarPicker && (
-                  <div className="settings-avatar-grid">
-                    {avatarOptions.map(avatar => (
-                      <button
-                        key={avatar.id}
-                        type="button"
-                        className={`settings-avatar-option ${
-                          selectedAvatarId === avatar.id ? 'selected' : ''
-                        }`}
-                        disabled={settingsSaving}
-                        onClick={() => setSelectedAvatarId(avatar.id)}
-                      >
-                        <img src={avatar.image} alt={avatar.name} />
-                        <strong>{avatar.name}</strong>
-                        <small>{avatar.category}</small>
-
-                        {selectedAvatarId === avatar.id && (
-                          <span className="settings-avatar-selected">
-                            ✓ Selected
-                          </span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              {showAvatarPicker && (
+                <div className="settings-avatar-grid">
+                  {avatarOptions.map(avatar => (
+                    <button
+                      key={avatar.id}
+                      type="button"
+                      className={`settings-avatar-option ${
+                        selectedAvatarId === avatar.id ? 'selected' : ''
+                      }`}
+                      onClick={() => setSelectedAvatarId(avatar.id)}
+                    >
+                      <img src={avatar.image} alt={avatar.name} />
+                      <strong>{avatar.name}</strong>
+                    </button>
+                  ))}
+                </div>
+              )}
 
               <label className="settings-field">
                 <span>Display name</span>
                 <input
                   value={accountName}
                   onChange={e => setAccountName(e.target.value)}
-                  placeholder="Enter your name"
                   required
                 />
               </label>
 
               <label className="settings-field">
                 <span>Username</span>
-                <div className="username-input">
-                  <span>@</span>
-                  <input
-                    value={accountUsername}
-                    onChange={e => setAccountUsername(e.target.value)}
-                    placeholder="yourusername"
-                  />
-                </div>
+                <input
+                  value={accountUsername}
+                  onChange={e => setAccountUsername(e.target.value)}
+                  placeholder="yourusername"
+                />
               </label>
 
               <label className="settings-field">
@@ -4967,10 +5026,8 @@ if (showAccountSettings) {
                 <textarea
                   value={accountBio}
                   onChange={e => setAccountBio(e.target.value)}
-                  placeholder="Tell other readers a little about yourself..."
                   rows={4}
                 />
-                <small>Let your reading buddies know more about you.</small>
               </label>
 
               <label className="settings-field">
@@ -4979,9 +5036,7 @@ if (showAccountSettings) {
                   value={interestsInput}
                   onChange={e => setInterestsInput(e.target.value)}
                   placeholder="Technology, Business, Fiction..."
-                  maxLength={300}
                 />
-                <small>Separate each interest with a comma.</small>
               </label>
 
               <button
@@ -4989,13 +5044,12 @@ if (showAccountSettings) {
                 className="settings-save-button"
                 disabled={settingsSaving}
               >
-                {settingsSaving ? 'Saving changes...' : 'Save changes →'}
+                {settingsSaving ? 'Saving...' : 'Save changes →'}
               </button>
             </form>
           )}
         </section>
 
-        {/* SECURITY & PASSWORD */}
         <section className="settings-section">
           <button
             type="button"
@@ -5007,40 +5061,59 @@ if (showAccountSettings) {
               <div className="settings-section-icon blue">⌑</div>
               <div>
                 <h3>Security & password</h3>
-                <p>Keep your account protected with a strong password.</p>
+                <p>Keep your account protected.</p>
               </div>
             </div>
-            <ChevronRight
-              className={activeSettingsSection === 'security' ? 'settings-chevron-open' : ''}
-              size={19}
-            />
+            <ChevronRight size={19} />
           </button>
 
           {activeSettingsSection === 'security' && (
             <form className="settings-form" onSubmit={changeAccountPassword}>
-              <label className="settings-field">
-                <span>New password</span>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={e => setNewPassword(e.target.value)}
-                  placeholder="Enter new password"
-                  minLength={6}
-                  required
-                />
-              </label>
-
-              <label className="settings-field">
-                <span>Confirm new password</span>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={e => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm your new password"
-                  minLength={6}
-                  required
-                />
-              </label>
+              {[
+                {
+                  label: 'Current password',
+                  value: currentPassword,
+                  setter: setCurrentPassword,
+                  visible: showCurrentPassword,
+                  toggle: setShowCurrentPassword
+                },
+                {
+                  label: 'New password',
+                  value: newPassword,
+                  setter: setNewPassword,
+                  visible: showNewPassword,
+                  toggle: setShowNewPassword
+                },
+                {
+                  label: 'Confirm new password',
+                  value: confirmPassword,
+                  setter: setConfirmPassword,
+                  visible: showConfirmPassword,
+                  toggle: setShowConfirmPassword
+                }
+              ].map((field, index) => (
+                <label className="settings-field" key={field.label}>
+                  <span>{field.label}</span>
+                  <div className="settings-password-wrap">
+                    <input
+                      type={field.visible ? 'text' : 'password'}
+                      value={field.value}
+                      onChange={e => field.setter(e.target.value)}
+                      placeholder={field.label}
+                      minLength={index === 0 ? undefined : 6}
+                      required
+                    />
+                    <button
+                      type="button"
+                      className="settings-password-toggle"
+                      onClick={() => field.toggle(prev => !prev)}
+                      aria-label={field.visible ? 'Hide password' : 'Show password'}
+                    >
+                      {field.visible ? '🙈' : '👁'}
+                    </button>
+                  </div>
+                </label>
+              ))}
 
               <p className="settings-hint">
                 Use at least 6 characters for your new password.
@@ -5057,7 +5130,6 @@ if (showAccountSettings) {
           )}
         </section>
 
-        {/* EMAIL ADDRESS */}
         <section className="settings-section">
           <button
             type="button"
@@ -5072,36 +5144,25 @@ if (showAccountSettings) {
                 <p>Your registered account email.</p>
               </div>
             </div>
-            <ChevronRight
-              className={activeSettingsSection === 'email' ? 'settings-chevron-open' : ''}
-              size={19}
-            />
+            <ChevronRight size={19} />
           </button>
 
           {activeSettingsSection === 'email' && (
-            <>
-              <div className="settings-email-card">
-                <div>
-                  <span>Email address</span>
-                  <strong>{user?.email || 'No email available'}</strong>
-                </div>
-                <span className="settings-verified">Account email</span>
+            <div className="settings-email-card">
+              <div>
+                <span>Email address</span>
+                <strong>{user?.email || 'No email available'}</strong>
               </div>
-
-              <p className="settings-hint">
-                Your email is managed through your READMATE authentication account.
-              </p>
-            </>
+              <span className="settings-verified">Account email</span>
+            </div>
           )}
         </section>
 
-        {/* SIGN OUT */}
         <section className="settings-logout-section">
           <div>
             <h3>Leaving READMATE?</h3>
             <p>You can sign out of your account on this device.</p>
           </div>
-
           <button
             type="button"
             className="settings-logout-button"
@@ -5116,6 +5177,8 @@ if (showAccountSettings) {
     </div>
   );
 }
+
+
 
 
     return (
