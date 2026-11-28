@@ -6,6 +6,7 @@ export default function Auth() {
   const [mode, setMode] = useState('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -421,16 +422,27 @@ export default function Auth() {
           autoComplete="email"
         />
 
-        <input
-          className="liquid-field"
-          required
-          type="password"
-          minLength={6}
-          placeholder="Password (at least 6 characters)"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-        />
+  <div className="liquid-password-wrap">
+  <input
+    className="liquid-field"
+    required
+    type={showPassword ? 'text' : 'password'}
+    minLength={6}
+    placeholder="Password (at least 6 characters)"
+    value={password}
+    onChange={e => setPassword(e.target.value)}
+    autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+  />
+
+  <button
+    type="button"
+    className="liquid-password-toggle"
+    onClick={() => setShowPassword(prev => !prev)}
+    aria-label={showPassword ? 'Hide password' : 'Show password'}
+  >
+    {showPassword ? '🙈' : '👁'}
+  </button>
+</div>
 
         <button
           className="liquid-submit"

@@ -552,3 +552,25 @@
 .settings-section > .settings-email-card {
   margin-top: 20px;
 }
+.liquid-password-wrap {
+  position: relative;
+  margin-bottom: 15px;
+}
+
+.liquid-password-wrap .liquid-field {
+  margin-bottom: 0;
+  padding-right: 50px;
+}
+
+.liquid-password-toggle {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 0;
+  background: transparent;
+  color: #8063a9;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 5px;
+}
